@@ -1,0 +1,42 @@
+{
+  "project_info": {
+    "project_number": "253445071932",
+    "firebase_url": "https://pullup-178303.firebaseio.com",
+    "project_id": "pullup-178303",
+    "storage_bucket": "pullup-178303.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:253445071932:android:da9c17539f18287a",
+        "android_client_info": {
+          "package_name": "ctd.solutions.pullup.com"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "253445071932-ijsgelu9avv61vm72bp7u2dec4j4djjt.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAMFoTaYMQajdU5yOcWjrCxYNz3HGh6DA0"
+        }
+      ],
+      "services": {
+        "analytics_service": {
+          "status": 1
+        },
+        "appinvite_service": {
+          "status": 1,
+          "other_platform_oauth_client": []
+        },
+        "ads_service": {
+          "status": 2
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
