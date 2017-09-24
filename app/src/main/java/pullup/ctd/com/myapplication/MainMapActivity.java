@@ -2,12 +2,9 @@ package pullup.ctd.com.myapplication;
 
 import android.Manifest;
 
-import org.apache.http.HttpEntity;
-import org.apache.http.HttpResponse;
 import org.apache.http.NameValuePair;
-import android.app.DatePickerDialog;
+
 import android.app.ProgressDialog;
-import android.app.TimePickerDialog;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
@@ -17,6 +14,8 @@ import android.location.Geocoder;
 import android.location.Location;
 import android.os.AsyncTask;
 import android.os.Build;
+import android.os.Handler;
+import android.os.Looper;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.os.Bundle;
@@ -24,35 +23,17 @@ import android.support.v4.content.ContextCompat;
 import android.support.v7.app.ActionBar;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
-import android.text.Editable;
-import android.text.TextWatcher;
-import android.util.AttributeSet;
 import android.util.Log;
-import android.util.Xml;
-import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.view.View;
 import android.widget.ArrayAdapter;
-import android.widget.AutoCompleteTextView;
-import android.widget.DatePicker;
 import android.widget.EditText;
-import android.widget.ImageView;
 import android.widget.LinearLayout;
-import android.widget.SimpleAdapter;
 import android.widget.Spinner;
-import android.widget.TextView;
-import android.widget.TimePicker;
 import android.widget.Toast;
 
 import com.google.android.gms.common.ConnectionResult;
-import com.google.android.gms.common.GooglePlayServicesNotAvailableException;
-import com.google.android.gms.common.GooglePlayServicesRepairableException;
 import com.google.android.gms.common.api.GoogleApiClient;
-import com.google.android.gms.common.api.Status;
-import com.google.android.gms.location.places.Place;
-import com.google.android.gms.location.places.ui.PlaceAutocomplete;
-import com.google.android.gms.location.places.ui.PlaceAutocompleteFragment;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
@@ -69,35 +50,17 @@ import com.google.android.gms.vision.barcode.Barcode;
 import com.seatgeek.placesautocomplete.OnPlaceSelectedListener;
 import com.seatgeek.placesautocomplete.PlacesAutocompleteTextView;
 
-import org.apache.http.client.ClientProtocolException;
-import org.apache.http.client.HttpClient;
-import org.apache.http.client.entity.UrlEncodedFormEntity;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.message.BasicNameValuePair;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
-import org.xmlpull.v1.XmlPullParser;
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.UnsupportedEncodingException;
-import java.net.HttpURLConnection;
-import java.net.URL;
-import java.net.URLEncoder;
-import java.text.DateFormat;
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Calendar;
-import java.util.Date;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Locale;
+import java.util.Map;
 
 import ctd.solutions.pullup.com.R;
 
@@ -109,13 +72,10 @@ public class MainMapActivity extends AppCompatActivity
 
     private ProgressDialog pDialog;
     // url to create new product
-    private static String url_create_product = "http://192.168.1.69/pullup/insert_events_to_db.php";
+    private static String url_create_new_event = "http://192.168.1.69/pullup/insert_events_to_db.php";
 
     // JSON Node names
-    private static final String TAG_SUCCESS = "success";
-
     JSONParser jsonParser = new JSONParser();
-
     GoogleMap mGoogleMap;
     SupportMapFragment mapFrag;
     LocationRequest mLocationRequest;
@@ -123,10 +83,7 @@ public class MainMapActivity extends AppCompatActivity
     Location mLastLocation;
     Marker mCurrLocationMarker;
     final Context context = this;
-    LatLng userEnteredLocation;
-    int PLACE_AUTOCOMPLETE_REQUEST_CODE = 1;
     String UserEnteredPlace = null;
-    String placeToShowInDialogBuilder;
     AlertDialog.Builder alertDialogBuilder;
     EditText editTextEventName;
     EditText editTextEventStartTime;
@@ -134,23 +91,14 @@ public class MainMapActivity extends AppCompatActivity
     EditText editTextEventImage;
 
     EditText editTextEventHostName;
-    Intent intent = getIntent();
-    AutoCompleteTextView atvPlaces;
     PlacesAutocompleteTextView placesAutocompleteTextView;
     double lat;
     double lng;
     LinearLayout layout;
-    TextView textView;
-    Place placeToGo;
     double latitude;
     double longitude;
     String[] s = {"Strip Club ", "Night Club", "Kick Back ", "Charity", "Concert", "Football Game",
             "BasketBall Game ", "Shopping", "Advertisement 1", "Advertisement 2"};
-    InputStream is = null;
-    String result = null;
-    String line = null;
-    int code;
-
 
     String eventtype;
     String eventname;
@@ -159,6 +107,31 @@ public class MainMapActivity extends AppCompatActivity
     String eventhost;
     String eventstatus;
     String eventimage;
+
+    ArrayList<PullUpEvents> eventsList = new ArrayList<PullUpEvents>();
+    HashMap<String, String> map = new HashMap<String, String>();
+
+    // Creating JSON Parser object
+    JSONParser jParser = new JSONParser();
+
+    // url to get all events list
+    private static String url_checkForEvents = "http://192.168.1.69/pullup/get_all_events.php";
+
+    // JSON Node names
+    private static final String TAG_SUCCESS = "success";
+
+    private static final String TAG_PULLUPEVENT = "pullupevent";
+
+    private static final String TAG_EVENT_TYPE = "eventtype";
+    private static final String TAG_EVENT_NAME = "eventname";
+    private static final String TAG_EVENT_ADDRESS = "eventAddress";
+    private static final String TAG_EVENT_STARTTIME = "eventstarttime";
+    private static final String TAG_EVENT_HOST = "eventhost";
+    private static final String TAG_EVENT_STATUS = "eventstatus";
+    private static final String TAG_EVENT_IMAGE = "eventimage";
+
+    // events JSONArray
+    JSONArray events = null;
 
 
     @Override
@@ -170,6 +143,14 @@ public class MainMapActivity extends AppCompatActivity
 
         mapFrag = (SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map);
         mapFrag.getMapAsync(this);
+
+        checkForEvents();
+    }
+
+    private void checkForEvents() {
+
+        new LoadAllEvents().execute();
+
     }
 
     @Override
@@ -346,12 +327,9 @@ public class MainMapActivity extends AppCompatActivity
                 layout = new LinearLayout(MainMapActivity.this);
                 layout.setOrientation(LinearLayout.VERTICAL);
 
-
-
                 final ArrayAdapter<String> adp = new ArrayAdapter<String>(MainMapActivity.this,
                         android.R.layout.simple_spinner_item, s);
 
-                //  tx= (TextView)findViewById(R.id.text1);
                 final Spinner sp = new Spinner(MainMapActivity.this);
                 sp.setLayoutParams(new LinearLayout.LayoutParams(ActionBar.LayoutParams.WRAP_CONTENT,
                         ActionBar.LayoutParams.WRAP_CONTENT));
@@ -373,12 +351,6 @@ public class MainMapActivity extends AppCompatActivity
                                 Log.d("String", place.description);
 
                                 UserEnteredPlace = place.description;
-
-                                /*double latitude = geoPoint.getLatitudeE6() / 1E6;
-                                double longitude = geoPoint.getLongitudeE6() / 1E6;
-
-                                location.setLatitude(latitude);
-                                location.setLongitude(longitude);*/
                                 try {
                                     latitude = getLocationFromAddress(UserEnteredPlace).lat / 1E6;
                                     longitude = getLocationFromAddress(UserEnteredPlace).lng / 1E6;
@@ -387,8 +359,6 @@ public class MainMapActivity extends AppCompatActivity
                                 } catch (IOException e) {
                                     e.printStackTrace();
                                 }
-                                // placeToGo.
-                                // userEnteredLocation = placeToGo.getLatLng();
 
 
                                 try {
@@ -396,7 +366,6 @@ public class MainMapActivity extends AppCompatActivity
                                 } catch (IOException e) {
                                     e.printStackTrace();
                                 }
-                                // Log.d("Lng", String.valueOf(lng));
                             }
                         }
                 );
@@ -437,7 +406,6 @@ public class MainMapActivity extends AppCompatActivity
                         new CreateNewEvent().execute();
 
 
-
                     }
                 });
                 alertDialogBuilder.show();
@@ -472,7 +440,7 @@ public class MainMapActivity extends AppCompatActivity
     }
 
     /**
-     * Background Async Task to Create new product
+     * Background Async Task to Create new event
      */
     class CreateNewEvent extends AsyncTask<String, Void, Void> {
 
@@ -482,11 +450,7 @@ public class MainMapActivity extends AppCompatActivity
         @Override
         protected void onPreExecute() {
             super.onPreExecute();
-          /*  pDialog = new ProgressDialog(context);
-            pDialog.setMessage("Creating Event..");
-            pDialog.setIndeterminate(false);
-            pDialog.setCancelable(true);
-            pDialog.show();*/
+
         }
 
         /**
@@ -506,7 +470,7 @@ public class MainMapActivity extends AppCompatActivity
 
             // getting JSON Object
             // Note that create product url accepts POST method
-            JSONObject json = jsonParser.makeHttpRequest(url_create_product,
+            JSONObject json = jsonParser.makeHttpRequest(url_create_new_event,
                     "POST", nameValuePairs);
 
             // check log cat fro response
@@ -523,7 +487,7 @@ public class MainMapActivity extends AppCompatActivity
                     Log.d("Success", "Inserted Them IN DB");
 
                     // closing this screen
-                   // finish();
+                    // finish();
                 } else {
                     // failed to create product
                 }
@@ -543,140 +507,170 @@ public class MainMapActivity extends AppCompatActivity
 
         }
 
-/*    private void insertEventintoDB()  {
+    }
 
-        ArrayList<NameValuePair> nameValuePairs = new ArrayList<NameValuePair>();
+    /**
+     * Background Async Task to Load all product by making HTTP Request
+     */
+    class LoadAllEvents extends AsyncTask<String, Void, Void> {
 
-        nameValuePairs.add(new BasicNameValuePair("eventtype",eventtype));
-        nameValuePairs.add(new BasicNameValuePair("eventname",eventname));
-        nameValuePairs.add(new BasicNameValuePair("eventAddress",eventAddress));
-        nameValuePairs.add(new BasicNameValuePair("eventstarttime",eventstarttime));
-        nameValuePairs.add(new BasicNameValuePair("eventhost",eventhost));
-        nameValuePairs.add(new BasicNameValuePair("eventstatus",eventstatus));
-        nameValuePairs.add(new BasicNameValuePair("eventimage",eventimage));
-
-
-        try
-        {
-            HttpClient httpclient = new DefaultHttpClient();
-            HttpPost httppost = new HttpPost("http://192.168.1.69/pullup/insert.php");
-            httppost.setEntity(new UrlEncodedFormEntity(nameValuePairs));
-            HttpResponse response = httpclient.execute(httppost);
-            HttpEntity entity = response.getEntity();
-            is = entity.getContent();
-            Log.e("pass 1", "connection success ");
-        }
-        catch(Exception e)
-        {
-            Log.e("Fail 1", e.toString());
-            Toast.makeText(getApplicationContext(), "Invalid IP Address",
-                    Toast.LENGTH_LONG).show();
+        /**
+         * Before starting background thread Show Progress Dialog
+         */
+        @Override
+        protected void onPreExecute() {
+            super.onPreExecute();
+       /*     pDialog = new ProgressDialog(MainMapActivity.this);
+            pDialog.setMessage("Loading events. Please wait...");
+            pDialog.setIndeterminate(false);
+            pDialog.setCancelable(false);
+            pDialog.show();*/
         }
 
-        try
-        {
-            BufferedReader reader = new BufferedReader
-                    (new InputStreamReader(is,"iso-8859-1"),8);
-            StringBuilder sb = new StringBuilder();
-            while ((line = reader.readLine()) != null)
-            {
-                sb.append(line + "\n");
-            }
-            is.close();
-            result = sb.toString();
-            Log.e("pass 2", "connection success ");
-        }
-        catch(Exception e)
-        {
-            Log.e("Fail 2", e.toString());
-        }
+        /**
+         * getting All events from url
+         */
+        protected Void doInBackground(String... args) {
+            // Building Parameters
+            List<NameValuePair> params = new ArrayList<NameValuePair>();
+            // getting JSON string from URL
+            JSONObject json = jParser.makeHttpRequest(url_checkForEvents, "GET", params);
 
-        try
-        {
-            JSONObject json_data = new JSONObject(result);
-            code=(json_data.getInt("code"));
-
-            if(code==1)
-            {
-                Toast.makeText(getBaseContext(), "Inserted Successfully",
-                        Toast.LENGTH_SHORT).show();
-            }
-            else
-            {
-                Toast.makeText(getBaseContext(), "Sorry, Try Again",
-                        Toast.LENGTH_LONG).show();
-            }
-        }
-        catch(Exception e)
-        {
-            Log.e("Fail 3", e.toString());
-        }
-
-    }*/
-
-
-/*    @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        if (requestCode == PLACE_AUTOCOMPLETE_REQUEST_CODE) {
-            if (resultCode == RESULT_OK) {
-                Place place = PlaceAutocomplete.getPlace(this, data);
-                userEnteredLocation = place.getLatLng();
-                UserEnteredPlace = place.getName().toString();
-
-                Log.i("Place", "Place: " + place.getName());
-            } else if (resultCode == PlaceAutocomplete.RESULT_ERROR) {
-                Status status = PlaceAutocomplete.getStatus(this, data);
-                // TODO: Handle the error.
-                Log.i("Place Error", status.getStatusMessage());
-
-            } else if (resultCode == RESULT_CANCELED) {
-                // The user canceled the operation.
-            }
-        }
-    }*/
-
-        public void getLatLongFromAddress(String youraddress) {
-            String uri = "http://maps.google.com/maps/api/geocode/json?address=" +
-                    youraddress + "&sensor=false";
-            HttpGet httpGet = new HttpGet(uri);
-            HttpClient client = new DefaultHttpClient();
-            HttpResponse response;
-            StringBuilder stringBuilder = new StringBuilder();
+            // Check your log cat for JSON reponse
+            Log.d("All Events: ", json.toString());
 
             try {
-                response = client.execute(httpGet);
-                HttpEntity entity = response.getEntity();
-                InputStream stream = entity.getContent();
-                int b;
-                while ((b = stream.read()) != -1) {
-                    stringBuilder.append((char) b);
+                // Checking for SUCCESS TAG
+                int success = json.getInt(TAG_SUCCESS);
+
+                if (success == 1) {
+                    // events found
+                    // Getting Array of Events
+                    events = json.getJSONArray(TAG_PULLUPEVENT);
+                    Log.d("Events", events.toString());
+
+                    // looping through All Events
+                    for (int i = 0; i < events.length(); i++) {
+                        JSONObject c = events.getJSONObject(i);
+
+                        // Storing each json item in variable
+                       /* eventtype = c.getString(TAG_EVENT_TYPE);
+                        eventname = c.getString(TAG_EVENT_NAME);
+                        eventAddress = c.getString(TAG_EVENT_ADDRESS);
+                        eventstarttime = c.getString(TAG_EVENT_STARTTIME);
+                        eventhost = c.getString(TAG_EVENT_HOST);
+                        eventstatus = c.getString(TAG_EVENT_STATUS);
+                        eventimage = c.getString(TAG_EVENT_IMAGE);*/
+
+                        PullUpEvents p = new PullUpEvents(c.getString(TAG_EVENT_TYPE), c.getString(TAG_EVENT_NAME), c.getString(TAG_EVENT_ADDRESS),
+                                c.getString(TAG_EVENT_STARTTIME), c.getString(TAG_EVENT_HOST), c.getString(TAG_EVENT_STATUS), c.getString(TAG_EVENT_IMAGE));
+
+
+                        eventsList.add(p);
+                        Log.d("Events List", eventsList.toString());
+
+                        // creating new HashMap
+
+
+                        // adding each child node to HashMap key => value
+                       /* map.put(TAG_EVENT_TYPE, eventtype);
+                        map.put(TAG_EVENT_NAME, eventname);
+                        map.put(TAG_EVENT_ADDRESS, eventAddress);
+                        map.put(TAG_EVENT_STARTTIME, eventstarttime);
+                        map.put(TAG_EVENT_HOST, eventhost);
+                        map.put(TAG_EVENT_STATUS, eventstatus);
+                        map.put(TAG_EVENT_IMAGE, eventimage);*/
+
+                        //eventsList.add(map);
+
+
+                    }
+                } else {
+                    Log.d("No Events Found", "Nothing Going On");
+                    System.exit(9);
+                    // no events found
+                    // Launch Add New product Activity
+                   /* Intent i = new Intent(getApplicationContext(),
+                            NewProductActivity.class);
+                    // Closing all previous activities
+                    i.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+                    startActivity(i);*/
                 }
-            } catch (ClientProtocolException e) {
-                e.printStackTrace();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-
-            JSONObject jsonObject = new JSONObject();
-            try {
-                jsonObject = new JSONObject(stringBuilder.toString());
-
-                lng = ((JSONArray) jsonObject.get("results")).getJSONObject(0)
-                        .getJSONObject("geometry").getJSONObject("location")
-                        .getDouble("lng");
-
-                lat = ((JSONArray) jsonObject.get("results")).getJSONObject(0)
-                        .getJSONObject("geometry").getJSONObject("location")
-                        .getDouble("lat");
-
-                Log.d("latitude", String.valueOf(lat));
-                Log.d("longitude", String.valueOf(lng));
             } catch (JSONException e) {
                 e.printStackTrace();
             }
+            onPostExecute();
 
+            return null;
+        }
+
+        /**
+         * After completing background task Dismiss the progress dialog
+         **/
+        protected void onPostExecute() {
+            // dismiss the dialog after getting all events
+            //   pDialog.dismiss();
+            // updating UI from Background Thread
+
+            Log.d("Events List", eventsList.toString());
+            runOnUiThread(new Runnable() {
+                public void run() {
+
+                    for (PullUpEvents p : eventsList) {
+
+                        try {
+                            latitude = getLocationFromAddress(p.getEventAddress()).lat / 1E6;
+                            // Log.d("Latitude", String.valueOf(latitude));
+                            longitude = getLocationFromAddress(p.getEventAddress()).lng / 1E6;
+                            //  Log.d("Longitude", String.valueOf(longitude));
+                            mGoogleMap.addMarker(new MarkerOptions()
+                                            .title(p.getEventName())
+                                            .position(new LatLng(latitude, longitude))
+                                    // etc.
+                            );
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                    }
+
+                    // mGoogleMap.addMarker(new MarkerOptions().position(new LatLng(latitude, longitude)).title(map.get(TAG_EVENT_NAME)));
+
+                }
+            });
+
+
+
+     /*class AddMarker {
+        public AddMarker(LoadAllEvents loadAllEvents) {
+        }
+
+         public AddMarker(MainMapActivity mainMapActivity) {
+         }
+
+         public void addMarker(final GoogleMap mGoogleMap, String eventname, String eventAddress) throws IOException {
+
+             final MarkerOptions opts = new MarkerOptions();
+             Handler handler = new Handler(Looper.getMainLooper());
+             MainMapActivity m = new MainMapActivity();
+             //m.getLocationFromAddress(eventAddress);
+
+             latitude = m.getLocationFromAddress(eventAddress).lat / 1E6;
+             longitude = m.getLocationFromAddress(eventAddress).lng / 1E6;
+
+             opts.title(eventname);
+            // mGoogleMap.addMarker(new MarkerOptions().position(new LatLng(latitude, longitude)).title(UserEnteredPlace));
+
+             opts.position(new LatLng(latitude, longitude)).title(eventname);
+             handler.post(new Runnable() {
+                 public void run() {
+                     mGoogleMap.addMarker(opts);
+                 }
+             });
+         }
+         }*/
         }
     }
 }
+
 
 
