@@ -6,6 +6,8 @@
     <string name="reset">reset</string>
     <string name="add">add</string>
     <string name="str_atv_places">Enter Place Here</string>
+    <string name="eegeo_api_key">c035fd5c16722244ae993f36aa771155</string>
+
 
     <!-- TODO: Remove or change this placeholder text -->
     <string name="hello_blank_fragment">Hello blank fragment</string>
