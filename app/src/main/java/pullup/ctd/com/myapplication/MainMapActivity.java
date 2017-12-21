@@ -9,6 +9,7 @@ import android.location.Address;
 import android.location.Geocoder;
 import android.location.Location;
 import android.location.LocationManager;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
@@ -52,10 +53,6 @@ import java.util.HashMap;
 import java.util.List;
 
 import ctd.solutions.pullup.com.R;
-
-import static pullup.ctd.com.myapplication.JDBC.DB_URL;
-import static pullup.ctd.com.myapplication.JDBC.PASS;
-import static pullup.ctd.com.myapplication.JDBC.USER;
 
 public class MainMapActivity extends AppCompatActivity {
 
@@ -126,7 +123,7 @@ public class MainMapActivity extends AppCompatActivity {
 
     // events JSONArray
     JSONArray events = null;
-    EegeoMap mapEEgeo = null;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -303,11 +300,27 @@ public class MainMapActivity extends AppCompatActivity {
                         eventhost = editTextEventHostName.getText().toString();
                         eventstatus = editTextEventStatus.getText().toString();
                         eventimage = editTextEventImage.getText().toString();
-                        mapEEgeo.addMarker(new MarkerOptions().position(new LatLng(latitude, longitude)).labelText(UserEnteredPlace));
-                        mapEEgeo.moveCamera(CameraUpdateFactory.newLatLng(new LatLng(latitude, longitude)));
-                        //  new CreateNewEvent().execute();
-                        insertDataIntoDatabase(eventtype, eventname, eventAddress, eventstarttime, eventhost, eventstatus, eventimage);
+                        m_mapView = (MapView) findViewById(R.id.mapView);
+                        //m_mapView.onCreate(savedInstanceState);
 
+                        m_mapView.getMapAsync(new OnMapReadyCallback() {
+                            @Override
+                            public void onMapReady(final EegeoMap map) {
+                                m_eegeoMap = map;
+
+                                RelativeLayout uiContainer = (RelativeLayout) findViewById(R.id.eegeo_ui_container);
+                                m_interiorView = new IndoorMapView(m_mapView, uiContainer, m_eegeoMap);
+
+                                map.addMarker(new MarkerOptions().position(new LatLng(latitude, longitude)).labelText(UserEnteredPlace));
+                                map.moveCamera(CameraUpdateFactory.newLatLng(new LatLng(latitude, longitude)));
+
+                                Toast.makeText(MainMapActivity.this, "Hello World!", Toast.LENGTH_LONG).show();
+                                new CreateNewEvent(eventtype, eventname, eventAddress, eventstarttime, eventhost, eventstatus, eventimage).execute();
+
+                               // insertDataIntoDatabase(eventtype, eventname, eventAddress, eventstarttime, eventhost, eventstatus, eventimage);
+
+                            }
+                        });
 
                     }
                 });
@@ -384,4 +397,173 @@ public class MainMapActivity extends AppCompatActivity {
 
         return p1;
     }
+
+    class CreateNewEvent extends AsyncTask<String, Void, Void> {
+
+        String eventtype1;
+        String eventName1;
+        String eventAddress1;
+        String eventstarttime1;
+        String eventhost1;
+        String eventstatus1;
+        String eventimage1;
+
+        public CreateNewEvent(String eventtype, String eventname, String eventAddress, String eventstarttime,
+                              String eventhost, String eventstatus, String eventimage) {
+
+             eventtype1 = eventtype;
+             eventName1 = eventname;
+             eventAddress1 = eventAddress;
+             eventstarttime1 = eventstarttime;
+             eventhost1 = eventhost;
+             eventstatus1 = eventstatus;
+             eventimage1 = eventimage;
+
+
+        }
+
+        @Override
+        protected void onPreExecute() {
+            super.onPreExecute();
+
+        }
+
+        @Override
+        protected Void doInBackground(String... args) {
+            try{
+                //STEP 2: Register JDBC driver
+                Class.forName("com.mysql.jdbc.Driver");
+
+                //STEP 3: Open a connection
+                System.out.println("Connecting to a selected database...");
+                conn = DriverManager.getConnection(DB_URL, USER, PASS);
+                System.out.println("Connected database successfully...");
+
+                //STEP 4: Execute a query
+                System.out.println("Inserting records into the table...");
+                stmt = conn.createStatement();
+
+                String sql = "INSERT INTO pullup (eventtype, eventname, eventAddress, eventstarttime, eventhost, eventstatus, eventimage) " +
+                        "VALUES ('" +eventtype1+"', '"+eventName1+"', '"+eventAddress1+ "', '"+eventstarttime1+"','"+eventhost1+"','"+eventstatus1+"','"+eventimage1+"')";
+                Log.d("sql statement : ", sql);
+                stmt.executeUpdate(sql);
+
+                System.out.println("Inserted records into the table...");
+
+            }catch(SQLException se){
+                //Handle errors for JDBC
+                se.printStackTrace();
+            }catch(Exception e){
+                //Handle errors for Class.forName
+                e.printStackTrace();
+            }finally{
+                //finally block used to close resources
+                try{
+                    if(stmt!=null)
+                        conn.close();
+                }catch(SQLException se){
+                }// do nothing
+                try{
+                    if(conn!=null)
+                        conn.close();
+                }catch(SQLException se){
+                    se.printStackTrace();
+                }//end finally try
+            }//end try
+            return null;
+        }
+
+        protected void onPostExecute(String file_url) {
+            // dismiss the dialog once done
+            pDialog.dismiss();
+
+        }
+    }
+
+
+       /* protected Void doInBackground(String... args) {
+
+            try{
+                //STEP 2: Register JDBC driver
+                Class.forName("com.mysql.jdbc.Driver");
+
+                //STEP 3: Open a connection
+                System.out.println("Connecting to a selected database...");
+                conn = DriverManager.getConnection(DB_URL, USER, PASS);
+                System.out.println("Connected database successfully...");
+
+                //STEP 4: Execute a query
+                System.out.println("Inserting records into the table...");
+                stmt = conn.createStatement();
+
+                String sql = "INSERT INTO pullup (eventtype, eventname, eventAddress, eventstarttime, eventhost, eventstatus, eventimage) " +
+                        "VALUES (, 'LitStation', '1207 Elzy Avenue Greenwood,MS 38930', '900','Gip','343','im')";
+                stmt.executeUpdate(sql);
+
+                System.out.println("Inserted records into the table...");
+
+            }catch(SQLException se){
+                //Handle errors for JDBC
+                se.printStackTrace();
+            }catch(Exception e){
+                //Handle errors for Class.forName
+                e.printStackTrace();
+            }finally{
+                //finally block used to close resources
+                try{
+                    if(stmt!=null)
+                        conn.close();
+                }catch(SQLException se){
+                }// do nothing
+                try{
+                    if(conn!=null)
+                        conn.close();
+                }catch(SQLException se){
+                    se.printStackTrace();
+                }//end finally try
+            }//end try
+
+            // Building Parameters
+                    *//*List<NameValuePair> nameValuePairs = new ArrayList<NameValuePair>();
+                    nameValuePairs.add(new BasicNameValuePair("eventtype", eventtype));
+                    nameValuePairs.add(new BasicNameValuePair("eventname", eventname));
+                    nameValuePairs.add(new BasicNameValuePair("eventAddress", eventAddress));
+                    nameValuePairs.add(new BasicNameValuePair("eventstarttime", eventstarttime));
+                    nameValuePairs.add(new BasicNameValuePair("eventhost", eventhost));
+                    nameValuePairs.add(new BasicNameValuePair("eventstatus", eventstatus));
+                    nameValuePairs.add(new BasicNameValuePair("eventimage", eventimage));*//*
+
+            // getting JSON Object
+            // Note that create product url accepts POST method
+                    *//*JSONObject json = jsonParser.makeHttpRequest(url_create_new_event,
+                            "POST", nameValuePairs);*//*
+
+            // check log cat fro response
+            // Log.d("Create Response", json.toString());
+
+            // check for success tag
+            //   int success = json.getInt(TAG_SUCCESS);
+            int success = 1;
+            if (success == 1) {
+                // successfully created product
+                Log.d("Success", "Inserted Them IN DB");
+
+
+                // closing this screen
+                // finish();
+            } else {
+                // failed to create product
+            }
+
+            return null;
+        }
+
+        *//**
+         * After completing background task Dismiss the progress dialog
+         **//*
+        protected void onPostExecute(String file_url) {
+            // dismiss the dialog once done
+            pDialog.dismiss();
+
+        }*/
 }
