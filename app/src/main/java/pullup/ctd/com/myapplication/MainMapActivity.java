@@ -4,6 +4,7 @@ import android.Manifest;
 import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.DialogInterface;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.location.Address;
 import android.location.Geocoder;
@@ -41,7 +42,10 @@ import com.google.android.gms.vision.barcode.Barcode;
 import com.seatgeek.placesautocomplete.OnPlaceSelectedListener;
 import com.seatgeek.placesautocomplete.PlacesAutocompleteTextView;
 
+import org.apache.http.NameValuePair;
 import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import java.io.IOException;
 import java.sql.Connection;
@@ -64,7 +68,7 @@ public class MainMapActivity extends AppCompatActivity {
     private static String url_create_new_event = "http://ec2-54-174-234-251.compute-1.amazonaws.com/insert.php";
 
     // url to get all events list
-    private static String url_checkForEvents = "http://ec2-54-174-234-251.compute-1.amazonaws.com/get_all_events.php";
+    private static String url_checkForEvents = "http://ec2-54-174-234-251.compute-1.amazonaws.com/getAll.php";
     private Marker m_marker = null;
 
     // JSON Node names
@@ -102,7 +106,7 @@ public class MainMapActivity extends AppCompatActivity {
 
     // JSON Node names
     private static final String TAG_SUCCESS = "pullupevent";
-    private static final String TAG_PULLUPEVENT = "pullupevent";
+    private static final String TAG_PULLUPEVENT = "eventtype";
     private static final String TAG_EVENT_TYPE = "eventtype";
     private static final String TAG_EVENT_NAME = "eventname";
     private static final String TAG_EVENT_ADDRESS = "eventAddress";
@@ -176,7 +180,7 @@ public class MainMapActivity extends AppCompatActivity {
                     public void onInitialStreamingComplete() {
                         CameraPosition position = new CameraPosition.Builder()
                                 .target(latitude, longitude)
-                                .zoom(360)
+                                .zoom(11)
                                 .build();
 
                         map.moveCamera(CameraUpdateFactory.newCameraPosition(position));
@@ -184,12 +188,13 @@ public class MainMapActivity extends AppCompatActivity {
                 });
 
 
-                Toast.makeText(MainMapActivity.this, "Hello World!", Toast.LENGTH_LONG).show();
+                Toast.makeText(MainMapActivity.this, "Showing your Current Location", Toast.LENGTH_LONG).show();
             }
         });
+
+        checkForEvents();
+
     }
-
-
 
     @Override
     protected void onResume() {
@@ -480,90 +485,86 @@ public class MainMapActivity extends AppCompatActivity {
         }
     }
 
+    private void checkForEvents() {
 
-       /* protected Void doInBackground(String... args) {
+        new LoadAllEvents().execute();
 
-            try{
-                //STEP 2: Register JDBC driver
-                Class.forName("com.mysql.jdbc.Driver");
+    }
 
-                //STEP 3: Open a connection
-                System.out.println("Connecting to a selected database...");
-                conn = DriverManager.getConnection(DB_URL, USER, PASS);
-                System.out.println("Connected database successfully...");
+    class LoadAllEvents extends AsyncTask<String, String, String> {
 
-                //STEP 4: Execute a query
-                System.out.println("Inserting records into the table...");
-                stmt = conn.createStatement();
-
-                String sql = "INSERT INTO pullup (eventtype, eventname, eventAddress, eventstarttime, eventhost, eventstatus, eventimage) " +
-                        "VALUES (, 'LitStation', '1207 Elzy Avenue Greenwood,MS 38930', '900','Gip','343','im')";
-                stmt.executeUpdate(sql);
-
-                System.out.println("Inserted records into the table...");
-
-            }catch(SQLException se){
-                //Handle errors for JDBC
-                se.printStackTrace();
-            }catch(Exception e){
-                //Handle errors for Class.forName
-                e.printStackTrace();
-            }finally{
-                //finally block used to close resources
-                try{
-                    if(stmt!=null)
-                        conn.close();
-                }catch(SQLException se){
-                }// do nothing
-                try{
-                    if(conn!=null)
-                        conn.close();
-                }catch(SQLException se){
-                    se.printStackTrace();
-                }//end finally try
-            }//end try
-
-            // Building Parameters
-                    *//*List<NameValuePair> nameValuePairs = new ArrayList<NameValuePair>();
-                    nameValuePairs.add(new BasicNameValuePair("eventtype", eventtype));
-                    nameValuePairs.add(new BasicNameValuePair("eventname", eventname));
-                    nameValuePairs.add(new BasicNameValuePair("eventAddress", eventAddress));
-                    nameValuePairs.add(new BasicNameValuePair("eventstarttime", eventstarttime));
-                    nameValuePairs.add(new BasicNameValuePair("eventhost", eventhost));
-                    nameValuePairs.add(new BasicNameValuePair("eventstatus", eventstatus));
-                    nameValuePairs.add(new BasicNameValuePair("eventimage", eventimage));*//*
-
-            // getting JSON Object
-            // Note that create product url accepts POST method
-                    *//*JSONObject json = jsonParser.makeHttpRequest(url_create_new_event,
-                            "POST", nameValuePairs);*//*
-
-            // check log cat fro response
-            // Log.d("Create Response", json.toString());
-
-            // check for success tag
-            //   int success = json.getInt(TAG_SUCCESS);
-            int success = 1;
-            if (success == 1) {
-                // successfully created product
-                Log.d("Success", "Inserted Them IN DB");
-
-
-                // closing this screen
-                // finish();
-            } else {
-                // failed to create product
-            }
-
-            return null;
+        /**
+         * Before starting background thread Show Progress Dialog
+         */
+        @Override
+        protected void onPreExecute() {
+            super.onPreExecute();
         }
 
-        *//**
-         * After completing background task Dismiss the progress dialog
-         **//*
-        protected void onPostExecute(String file_url) {
-            // dismiss the dialog once done
-            pDialog.dismiss();
+        /**
+         * getting All events from url
+         */
+        protected String doInBackground(String... args) {
+            // Building Parameters
+            List<NameValuePair> params = new ArrayList<NameValuePair>();
+            // getting JSON string from URL
+            JSONArray json = jParser.makeHttpRequest(url_checkForEvents, "GET", params);
 
-        }*/
+            // Check your log cat for JSON reponse
+            Log.d("All Events: ", json.toString());
+
+                for (int i = 0; i < json.length(); i++) {
+
+                    JSONObject c = null;
+                    try {
+                        c = json.getJSONObject(i);
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                    }
+
+                    PullUpEvents p = null;
+                    try {
+                        p = new PullUpEvents(c.getString(TAG_EVENT_TYPE), c.getString(TAG_EVENT_NAME), c.getString(TAG_EVENT_ADDRESS),
+                                c.getString(TAG_EVENT_STARTTIME), c.getString(TAG_EVENT_HOST), c.getString(TAG_EVENT_STATUS), c.getString(TAG_EVENT_IMAGE));
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                    }
+
+
+                    eventsList.add(p);
+                    Log.d("Events List", eventsList.toString());
+                }
+
+
+            onPostExecute();
+
+                return null;
+            }
+
+        /**
+         * After completing background task Dismiss the progress dialog
+         **/
+        protected void onPostExecute() {
+            Log.d("Events List", eventsList.toString());
+            runOnUiThread(new Runnable() {
+                public void run() {
+
+                    for (PullUpEvents p : eventsList) {
+                        try {
+                            latitude = getLocationFromAddress(p.getEventAddress()).lat / 1E6;
+                             Log.d("Latitude", String.valueOf(latitude));
+                            longitude = getLocationFromAddress(p.getEventAddress()).lng / 1E6;
+                              Log.d("Longitude", String.valueOf(longitude));
+                           m_marker = m_eegeoMap.addMarker(new MarkerOptions()
+                                    .position(new LatLng(latitude, longitude))
+                                    .labelText(p.getEventName()));
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                }
+            });
+        }
+
+    }
 }
