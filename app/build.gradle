@@ -5,7 +5,7 @@ android {
     buildToolsVersion "25.0.3"
     defaultConfig {
         applicationId "pullup.ctd.com.myapplication"
-        multiDexEnabled  true
+        multiDexEnabled true
         minSdkVersion 21
         targetSdkVersion 25
         versionCode 1
@@ -67,6 +67,7 @@ dependencies {
     }
     testCompile 'junit:junit:4.12'
 }
+
 
 
 

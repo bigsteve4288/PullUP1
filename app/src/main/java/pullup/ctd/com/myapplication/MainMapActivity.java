@@ -72,7 +72,6 @@ public class MainMapActivity extends AppCompatActivity {
     private Marker m_marker = null;
 
     // JSON Node names
-    JSONParser jsonParser = new JSONParser();
     final Context context = this;
     String UserEnteredPlace = null;
     AlertDialog.Builder alertDialogBuilder;
@@ -105,8 +104,6 @@ public class MainMapActivity extends AppCompatActivity {
 
 
     // JSON Node names
-    private static final String TAG_SUCCESS = "pullupevent";
-    private static final String TAG_PULLUPEVENT = "eventtype";
     private static final String TAG_EVENT_TYPE = "eventtype";
     private static final String TAG_EVENT_NAME = "eventname";
     private static final String TAG_EVENT_ADDRESS = "eventAddress";
@@ -124,9 +121,6 @@ public class MainMapActivity extends AppCompatActivity {
     //  Database credentials
     static final String USER = "bigsteve4288";
     static final String PASS = "Raven0209";
-
-    // events JSONArray
-    JSONArray events = null;
 
 
     @Override

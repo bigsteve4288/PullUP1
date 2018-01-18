@@ -17,7 +17,6 @@ import org.apache.http.NameValuePair;
 
 import org.json.JSONArray;
 import org.json.JSONException;
-import org.json.JSONObject;
 import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.entity.UrlEncodedFormEntity;
 import org.apache.http.client.methods.HttpGet;
@@ -92,9 +91,6 @@ public class JSONParser {
 
         // try parse the string to a JSON object
         try {
-
-
-           // jObj = new JSONObject(json);
             jObj = new JSONArray(json);
         } catch (JSONException e) {
             Log.e("JSON Parser", "Error parsing data " + e.toString());
