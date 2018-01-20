@@ -53,6 +53,7 @@ dependencies {
     compile 'com.android.support:support-v4:25.3.1'
     compile 'com.squareup.picasso:picasso:2.5.2'
     compile 'com.wrld:wrld-android-sdk:0.0.539@aar'
+    compile 'com.sothree.slidinguppanel:library:3.3.1'
 
 
     compile group: 'mysql', name: 'mysql-connector-java', version: '5.1.6'
